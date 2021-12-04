@@ -43,7 +43,7 @@ class Block {
             self.hash = null;
             let hash = SHA256(JSON.stringify(self));
             self.hash = currentHash;
-            return hash == currentHash;
+            resolve(hash == currentHash);
         });
     }
 
@@ -57,12 +57,17 @@ class Block {
      *     or Reject with an error.
      */
     getBData() {
+        if (this.height <= 0)
+            return
+        
         // Getting the encoded data saved in the Block
+        let data = this.body;
         // Decoding the data to retrieve the JSON representation of the object
+        let decodedData = hex2ascii(data);
         // Parse the data to an object to be retrieve.
-
+        let parsedData = JSON.parse(decodedData);
         // Resolve with the data if the object isn't the Genesis block
-
+        return parsedData;
     }
 
 }
