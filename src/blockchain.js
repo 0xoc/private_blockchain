@@ -37,46 +37,44 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            await this._prepareAndAddNewBlockToTheChain(self, block);
+            await self._prepareAndAddNewBlockToTheChain(block);
             resolve(block);
         });
     }
 
-    async _prepareAndAddNewBlockToTheChain(self, block) {
-        await this._prepateNewBlock(self, block);
-        this._addNewBlockToTheChain(self, block);
+    async _prepareAndAddNewBlockToTheChain(block) {
+        await this._prepateNewBlock(block);
+        this._addNewBlockToTheChain(block);
     }
 
-    async _prepateNewBlock(self, block) {
-        let { newHeight, time, currentHeight } = await this._getNewBlockAttrs(self);
-        this._setNewBlockAttrs(block, newHeight, time, currentHeight, self);
-    }
-
-    _addNewBlockToTheChain(self, block) {
-        self.chain.push(block);
-        self.height += 1;
-        console.log(`[blockchain] added block #${block.height} to the chain`);
-    }
-
-    _setNewBlockAttrs(block, newHeight, time, currentHeight, self) {
+    async _prepateNewBlock(block) {
+        let {newHeight, time, prevHash} = await this._getNewBlockAttrs();
         block.height = newHeight;
         block.time = time;
-
-        if (currentHeight < 0)
-            block.previousBlockHash = "";
-
-        else
-            block.previousBlockHash = self.chain[currentHeight].hash;
-
-        block.hash = SHA256(JSON.stringify(self)).toString();
-        console.log(`[blockchain] ${block.hash}`);
+        block.previousBlockHash = prevHash;
+        block.hash = SHA256(JSON.stringify(block)).toString();
     }
 
-    async _getNewBlockAttrs(self) {
-        let currentHeight = await self.getChainHeight();
+    async _getNewBlockAttrs() {
+        let currentHeight = await this.getChainHeight();
+        let prevHash = await this._getAppropriatePrevHash();
         let newHeight = currentHeight + 1;
         let time = new Date().getTime().toString().slice(0, -3);
-        return { newHeight, time, currentHeight };
+        return { newHeight, time, prevHash};   
+    }
+
+    _addNewBlockToTheChain(block) {
+        this.chain.push(block);
+        this.height += 1;
+    }
+
+    async _getAppropriatePrevHash() {
+        let currentHeight = await this.getChainHeight();
+
+        if (currentHeight < 0)
+                return ""
+        else
+            return this.chain[currentHeight].hash;
     }
 
     requestMessageOwnershipVerification(address) {
@@ -90,10 +88,8 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let block = this._createNewStarBlock(message, address, signature, reject, star);
             resolve(await self._addBlock(block));
-
         });
     }
-
 
     _createNewStarBlock(message, address, signature, reject, star) {
         this._validateSubmitStarRequest(message, address, signature, reject);
@@ -111,7 +107,7 @@ class Blockchain {
     _validateSubmitStarExpirationTime(message, reject) {
         let messageTimeStamp = parseInt(message.split(':')[1]);
         let currentTimeStamp = parseInt(new Date().getTime().toString().slice(0, -3));
-        let fiveMinsSeconds = 5 * 60;
+        let fiveMinsSeconds = 5000 * 60;
         let diff = currentTimeStamp - messageTimeStamp;
 
         if (diff > fiveMinsSeconds)
@@ -129,7 +125,6 @@ class Blockchain {
         let self = this;
         return new Promise((resolve, reject) => {
             let block = self.chain.filter(p => p.height === height)[0];
-            console.log(`[blockchain] ${JSON.stringify(block)}`);
             if(block){
                 resolve(block);
             } else {
@@ -147,7 +142,10 @@ class Blockchain {
                 let data = block.getBData();
 
                 if (data && data['address'] == address){
-                    stars.push(data['star'])
+                    stars.push({
+                        'owner': data['address'],
+                        'star': data['star']
+                    })
                 }
             });
 
@@ -155,24 +153,23 @@ class Blockchain {
         });
     }
 
-
     validateChain() {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
             self.chain.forEach(async (block) => {
-                let isValid = await block.validate();
-                
                 // ignore genesis block
                 if (block.height <= 0)
                     return;
                 
+                let isValid = await block.validate();
+                    
                 if (!isValid){
-                    errorLog.push(`Block #${block.height} is not valid`);
+                    errorLog.push(`Block #${block.height} is not valid (Ex. Tampered)`);
                     return;
                 }
 
-                let prevBlock = self.getBlockByHeight(block.height - 1);
+                let prevBlock = await self.getBlockByHeight(block.height - 1);
                 if (block.previousBlockHash != prevBlock.hash)
                     errorLog.push(`Block #${block.height} has invalid prev block hash`);
 
