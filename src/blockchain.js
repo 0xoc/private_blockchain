@@ -86,32 +86,34 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            let block = this._createNewStarBlock(message, address, signature, reject, star);
-            resolve(await self._addBlock(block));
+
+            if (!self._isSigValid(message, address, signature))
+                reject("Invalid Signature");
+
+            if (self._isSubmissionMessageExpired(message))
+                reject("submission message is expired");
+            
+            let block = new BlockClass.Block({ address, message, signature, star });
+            await self._addBlock(block)
+
+            resolve(block);
         });
     }
 
-    _createNewStarBlock(message, address, signature, reject, star) {
-        this._validateSubmitStarRequest(message, address, signature, reject);
-        let block = new BlockClass.Block({ address, message, signature, star });
-        return block;
+    _isSigValid( message, address, signature) {
+        try {
+            return bitcoinMessage.verify(message, address, signature);
+        } catch {
+            return false;
+        }
     }
 
-    _validateSubmitStarRequest(message, address, signature, reject) {
-        if (!bitcoinMessage.verify(message, address, signature))
-            reject("Invalid Signature");
-
-        this._validateSubmitStarExpirationTime(message, reject);
-    }
-
-    _validateSubmitStarExpirationTime(message, reject) {
+    _isSubmissionMessageExpired(message) {
         let messageTimeStamp = parseInt(message.split(':')[1]);
         let currentTimeStamp = parseInt(new Date().getTime().toString().slice(0, -3));
-        let fiveMinsSeconds = 5000 * 60;
+        let fiveMinsSeconds = 5 * 60;
         let diff = currentTimeStamp - messageTimeStamp;
-
-        if (diff > fiveMinsSeconds)
-            reject("Message expired");
+        return diff > fiveMinsSeconds
     }
 
     getBlockByHash(hash) {
