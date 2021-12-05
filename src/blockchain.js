@@ -115,7 +115,7 @@ class Blockchain {
     _isSubmissionMessageExpired(message) {
         let messageTimeStamp = parseInt(message.split(':')[1]);
         let currentTimeStamp = parseInt(new Date().getTime().toString().slice(0, -3));
-        let fiveMinsSeconds = 50 * 60;
+        let fiveMinsSeconds = 5 * 60;
         let diff = currentTimeStamp - messageTimeStamp;
         return diff > fiveMinsSeconds
     }
