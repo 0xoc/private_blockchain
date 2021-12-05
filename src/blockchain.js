@@ -87,12 +87,18 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
 
-            if (!self._isSigValid(message, address, signature))
+            if (!self._isSigValid(message, address, signature)){
                 reject("Invalid Signature");
+                return;
+            }
 
-            if (self._isSubmissionMessageExpired(message))
+            if (self._isSubmissionMessageExpired(message)){
                 reject("submission message is expired");
+                return;
+            }
             
+            console.log("Wow")
+
             let block = new BlockClass.Block({ address, message, signature, star });
             await self._addBlock(block)
 
@@ -111,7 +117,7 @@ class Blockchain {
     _isSubmissionMessageExpired(message) {
         let messageTimeStamp = parseInt(message.split(':')[1]);
         let currentTimeStamp = parseInt(new Date().getTime().toString().slice(0, -3));
-        let fiveMinsSeconds = 5 * 60;
+        let fiveMinsSeconds = 50 * 60;
         let diff = currentTimeStamp - messageTimeStamp;
         return diff > fiveMinsSeconds
     }
