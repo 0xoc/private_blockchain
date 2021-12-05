@@ -97,8 +97,6 @@ class Blockchain {
                 return;
             }
             
-            console.log("Wow")
-
             let block = new BlockClass.Block({ address, message, signature, star });
             await self._addBlock(block)
 
